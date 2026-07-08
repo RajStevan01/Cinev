@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "422110889291",
+    "project_id": "app-movie-df089",
+    "storage_bucket": "app-movie-df089.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422110889291:android:1cfc5f1f8c5c40c452d4ce",
+        "android_client_info": {
+          "package_name": "com.example.aplikasi_mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "422110889291-74eggqfo1to5erv3fjm3qrm35scca7ss.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aplikasi_mobile",
+            "certificate_hash": "d3ae76628fa6bdb599fbd6a07c36cb0e1e125a4f"
+          }
+        },
+        {
+          "client_id": "422110889291-gafafpl4vvrmadgqg93q7kd9811e9234.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aplikasi_mobile",
+            "certificate_hash": "19be1712e32f6ef8ee94af42b905784a967cbef5"
+          }
+        },
+        {
+          "client_id": "422110889291-qfj4311nbncjucqk9tcbih3t9ie3ajvp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYZ3CTraB_NWI_O4A8zwRlmhhpdqqt9Is"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "422110889291-qfj4311nbncjucqk9tcbih3t9ie3ajvp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "422110889291-gmbo4kegaupr84s45j7s79gqvuj4stnn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tesPlayer"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422110889291:android:4d78ffef404b1e5752d4ce",
+        "android_client_info": {
+          "package_name": "com.example.tes_player"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "422110889291-qfj4311nbncjucqk9tcbih3t9ie3ajvp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYZ3CTraB_NWI_O4A8zwRlmhhpdqqt9Is"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "422110889291-qfj4311nbncjucqk9tcbih3t9ie3ajvp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "422110889291-gmbo4kegaupr84s45j7s79gqvuj4stnn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tesPlayer"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
