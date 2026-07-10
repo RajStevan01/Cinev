@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:aplikasi_mobile/halaman_pilih_avatar.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:aplikasi_mobile/services/database_helper.dart';
 
 class HalamanUbahProfil extends StatefulWidget {
   const HalamanUbahProfil({super.key});
@@ -82,6 +83,13 @@ class _HalamanUbahProfilState extends State<HalamanUbahProfil> {
 
       // Reload user untuk memastikan data terbaru terambil
       await _pengguna!.reload();
+
+      // SIMPAN KE MYSQL MELALUI API
+      await DatabaseHelper.instance.updateProfilUser(
+        _pengguna!.uid,
+        urlFotoProfilUpdate,
+        _namaPenggunaController.text.trim(),
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

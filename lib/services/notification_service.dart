@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:aplikasi_mobile/services/database_helper.dart'; // Tambahan import database
 import 'package:firebase_messaging/firebase_messaging.dart'; // Import penangkap Firebase
+import 'package:flutter/foundation.dart'; // Tambahan import untuk kIsWeb
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -106,6 +107,11 @@ class NotificationService {
 
   // --- FUNGSI BARU: Inisialisasi Antena Firebase (FCM) ---
   Future<void> initFCM() async {
+    if (kIsWeb) {
+      print("FCM dinonaktifkan di Web untuk mencegah crash.");
+      return;
+    }
+    
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
     // Pastikan izin notif sudah aktif
@@ -117,8 +123,10 @@ class NotificationService {
     print(fcmToken);
     print("======================================");
 
-    // Subscribe ke topic all_users agar mendapat broadcast notifikasi admin
-    await messaging.subscribeToTopic('all_users');
+    // Subscribe ke topic all_users agar mendapat broadcast notifikasi admin (Hanya untuk Mobile)
+    if (!kIsWeb) {
+      await messaging.subscribeToTopic('all_users');
+    }
 
     // Skenario 1: Aplikasi sedang DIBUKA (Foreground)
     // Firebase tidak memunculkan notif secara otomatis jika aplikasi sedang dibuka.

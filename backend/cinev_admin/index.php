@@ -19,7 +19,14 @@ $movies = $conn->query("SELECT * FROM tb_local_movies ORDER BY created_at DESC")
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="#">Cinev Admin</a>
+            <a class="navbar-brand" href="index.php">Cinev Admin</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.php">Film Lokal</a></li>
+                    <li class="nav-item"><a class="nav-link" href="avatars.php">Manajemen Avatar</a></li>
+                    <li class="nav-item"><a class="nav-link" href="banners.php">Manajemen Banner</a></li>
+                </ul>
+            </div>
             <div class="d-flex">
                 <span class="navbar-text me-3">Halo, <?= $_SESSION['admin'] ?></span>
                 <a href="logout.php" class="btn btn-outline-light btn-sm">Logout</a>

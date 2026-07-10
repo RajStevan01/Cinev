@@ -10,6 +10,7 @@ import 'package:aplikasi_mobile/halaman_detail_film.dart';
 import 'package:aplikasi_mobile/halaman_lihat_semua.dart';
 import 'package:aplikasi_mobile/halaman_notifikasi.dart'; // Import halaman notifikasi
 import 'package:aplikasi_mobile/services/database_helper.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,11 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   late PageController _pageController;
   Timer? _timer;
   int _halamanSaatIni = 0;
-  final List<String> _daftarGambarBanner = [
-    'assets/images/banner_1.png',
-    'assets/images/banner_2.png',
-    'assets/images/banner_3.png',
-  ];
+  late Future<List<BannerModel>> _daftarBanner;
+  int _bannerCount = 0;
 
   @override
   void initState() {
@@ -53,25 +51,29 @@ class _HomeScreenState extends State<HomeScreen> {
         return listData.map((json) => SerialTv.dariJsonLokal(json)).toList();
       });
     } else {
-      _serialTvRiwayat = Future.value([]); // Kosong jika belum login
+    _serialTvRiwayat = Future.value([]); // Kosong jika belum login
     }
+
+    _daftarBanner = DatabaseHelper.instance.ambilDaftarBanner().then((data) => data['home'] ?? []);
 
     // Inisialisasi PageController dan Timer untuk banner
     _pageController = PageController(initialPage: 0);
     _timer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
-      if (_halamanSaatIni < _daftarGambarBanner.length - 1) {
-        _halamanSaatIni++;
-      } else {
-        _halamanSaatIni = 0;
-      }
+      if (_bannerCount > 0) {
+        if (_halamanSaatIni < _bannerCount - 1) {
+          _halamanSaatIni++;
+        } else {
+          _halamanSaatIni = 0;
+        }
 
-      // Pastikan controller masih ada sebelum dianimasikan
-      if (_pageController.hasClients) {
-        _pageController.animateToPage(
-          _halamanSaatIni,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeIn,
-        );
+        // Pastikan controller masih ada sebelum dianimasikan
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            _halamanSaatIni,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeIn,
+          );
+        }
       }
     });
   }
@@ -189,19 +191,65 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(
                   height: 150.0,
                   width: double.infinity,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    itemCount: _daftarGambarBanner.length,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            _daftarGambarBanner[index],
-                            fit: BoxFit.cover,
+                  child: FutureBuilder<List<BannerModel>>(
+                    future: _daftarBanner,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                        // Tampilkan banner dummy/kosong jika gagal atau kosong
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[850],
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ),
+                          child: const Center(child: Text('Tidak ada banner', style: TextStyle(color: Colors.white))),
+                        );
+                      }
+
+                      final banners = snapshot.data!;
+                      // Simpan jumlah banner untuk timer
+                      if (_bannerCount != banners.length) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              _bannerCount = banners.length;
+                            });
+                          }
+                        });
+                      }
+
+                      return PageView.builder(
+                        controller: _pageController,
+                        itemCount: banners.length,
+                        itemBuilder: (context, index) {
+                          final banner = banners[index];
+                          return GestureDetector(
+                            onTap: () async {
+                              if (banner.linkUrl != null && banner.linkUrl!.isNotEmpty) {
+                                final uri = Uri.parse(banner.linkUrl!);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                }
+                              }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  banner.pathGambar,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    color: Colors.grey[800],
+                                    child: const Icon(Icons.error, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:aplikasi_mobile/services/database_helper.dart';
 
 // Enum untuk mengelola mode yang sedang aktif
 enum AvatarMode { preset, custom }
@@ -67,33 +68,25 @@ class _HalamanPilihAvatarState extends State<HalamanPilihAvatar> {
     _muatAvatarPreset();
   }
 
-  // Fungsi untuk mengambil daftar URL avatar dari Firebase Storage
+  // Fungsi untuk mengambil daftar URL avatar dari MySQL (via DatabaseHelper)
   Future<void> _muatAvatarPreset() async {
     try {
-      // Akses folder 'avatars' di Firebase Storage
-      final listResult = await FirebaseStorage.instance
-          .ref('avatars')
-          .listAll();
-
-      // Ambil URL download untuk setiap item di folder
-      final urls = await Future.wait(
-        listResult.items.map((item) => item.getDownloadURL()),
-      );
+      // Panggil API untuk mendapatkan daftar URL gambar avatar
+      final urls = await DatabaseHelper.instance.ambilDaftarAvatar();
 
       // Perbarui state dengan daftar URL yang didapat
       if (mounted) {
         setState(() {
-          // Konversi List<dynamic> menjadi List<String> secara aman
-          _daftarUrlAvatarPreset = List<String>.from(urls);
+          _daftarUrlAvatarPreset = urls;
           _isLoadingPreset = false;
         });
       }
     } catch (e) {
-      // Tangani error jika terjadi (misal: izin ditolak)
-      if (!mounted) return; // <-- TAMBAHKAN PENGECEKAN INI
+      // Tangani error jika terjadi
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Gagal memilih gambar: $e')));
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat daftar avatar: $e')));
     }
   }
 

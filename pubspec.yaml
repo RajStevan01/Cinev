@@ -54,7 +54,7 @@ dependencies:
   # Untuk memutar video dari file lokal (offline)
   video_player: ^2.8.6
   shared_preferences: ^2.2.3
-  url_launcher: ^6.3.1
+  url_launcher: ^6.3.2
   google_sign_in: ^7.2.0
   
 dev_dependencies:
