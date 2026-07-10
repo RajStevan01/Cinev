@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:aplikasi_mobile/services/database_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -32,6 +33,13 @@ class _HalamanPemutarVideoState extends State<HalamanPemutarVideo> {
   @override
   void initState() {
     super.initState();
+    // Set orientasi menjadi landscape (kiri & kanan)
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.landscapeLeft,
+    ]);
+    // Sembunyikan status bar (fullscreen sejati)
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _loadSettingsAndInitializePlayer();
   }
 
@@ -90,24 +98,32 @@ class _HalamanPemutarVideoState extends State<HalamanPemutarVideo> {
     _historyTimer?.cancel();
     _simpanRiwayatKeDatabase(); // Simpan saat keluar
     _controller.dispose();
+    
+    // Kembalikan orientasi ke potrait dan munculkan kembali status bar
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.judul),
-        backgroundColor: Colors.black,
-      ),
+      // AppBar dihapus agar benar-benar fullscreen
       backgroundColor: Colors.black,
-      body: Center(
-        child: _controller.value.isInitialized
-            ? AspectRatio(
-                aspectRatio: _controller.value.aspectRatio,
-                // Gunakan Stack untuk menumpuk video player dan tombol kontrol
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
+      body: _controller.value.isInitialized
+          ? Stack(
+              children: [
+                // Lapisan Video di tengah layar
+                Center(
+                  child: AspectRatio(
+                    aspectRatio: _controller.value.aspectRatio,
+                    // Gunakan Stack untuk menumpuk video player dan tombol kontrol video
+                    child: Stack(
+                      alignment: Alignment.bottomCenter,
                   children: [
                     // Lapisan 1: Video Player
                     VideoPlayer(_controller),
@@ -181,9 +197,34 @@ class _HalamanPemutarVideoState extends State<HalamanPemutarVideo> {
                     ),
                   ],
                 ),
-              )
-            : const CircularProgressIndicator(),
-      ),
+              ),
+            ),
+
+                // Tombol Back di pojok kiri atas LAYAR (bukan video)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  child: SafeArea(
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ),
+                // Judul di bagian atas LAYAR
+                Positioned(
+                  top: 24,
+                  left: 64,
+                  child: SafeArea(
+                    child: Text(
+                      widget.judul,
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : const Center(child: CircularProgressIndicator()),
     );
   }
 }

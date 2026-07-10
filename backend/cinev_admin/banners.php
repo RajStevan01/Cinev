@@ -14,101 +14,111 @@ $banners = $conn->query("SELECT * FROM tb_banners ORDER BY created_at DESC");
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manajemen Banner - Cinev</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">Cinev Admin</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="index.php">Film Lokal</a></li>
-                    <li class="nav-item"><a class="nav-link" href="avatars.php">Manajemen Avatar</a></li>
-                    <li class="nav-item"><a class="nav-link" href="banners.php">Manajemen Banner</a></li>
-                </ul>
-            </div>
-            <div class="d-flex">
-                <span class="navbar-text me-3">Halo, <?= $_SESSION['admin'] ?></span>
-                <a href="logout.php" class="btn btn-outline-light btn-sm">Logout</a>
-            </div>
+    <nav class="navbar">
+        <a class="navbar-brand" href="index.php">Cinev Admin</a>
+        <ul class="navbar-nav">
+            <li><a class="nav-link" href="index.php">Film Lokal</a></li>
+            <li><a class="nav-link" href="avatars.php">Manajemen Avatar</a></li>
+            <li><a class="nav-link active" href="banners.php">Manajemen Banner</a></li>
+            <li><a class="nav-link" href="users.php">Manajemen User</a></li>
+        </ul>
+        <div class="nav-user">
+            <span>Halo, <?= $_SESSION['admin'] ?></span>
+            <a href="logout.php" class="btn btn-outline btn-sm">Logout</a>
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="container">
+        <div class="header-actions">
             <h2>Daftar Banner Iklan</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahBanner">Tambah Banner Baru</button>
+            <button class="btn btn-primary" onclick="openModal('modalTambahBanner')">Tambah Banner Baru</button>
         </div>
         
         <?php if(isset($_SESSION['pesan'])): ?>
-            <div class="alert alert-info">
+            <div class="alert alert-danger">
                 <?= $_SESSION['pesan']; unset($_SESSION['pesan']); ?>
             </div>
         <?php endif; ?>
 
         <div class="row">
             <?php if($banners->num_rows > 0): while($row = $banners->fetch_assoc()): ?>
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <img src="<?= $row['path_gambar'] ?>" class="card-img-top" alt="Banner" style="height: 150px; object-fit: cover;">
-                    <div class="card-body">
-                        <h5 class="card-title"><?= htmlspecialchars($row['judul']) ?></h5>
-                        <p class="card-text mb-1"><strong>Posisi:</strong> <span class="badge bg-<?= $row['posisi'] == 'home' ? 'success' : 'info' ?>"><?= strtoupper($row['posisi']) ?></span></p>
-                        <?php if($row['link_url']): ?>
-                            <a href="<?= htmlspecialchars($row['link_url']) ?>" target="_blank" class="text-truncate d-block" style="max-width: 100%;"><?= htmlspecialchars($row['link_url']) ?></a>
-                        <?php else: ?>
-                            <span class="text-muted">Tidak ada link</span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-footer bg-white border-top-0">
-                        <a href="hapus_banner.php?id=<?= $row['id'] ?>" class="btn btn-danger w-100" onclick="return confirm('Hapus banner ini?')">Hapus</a>
+            <div class="col-md-2" style="flex: 0 0 calc(33.333% - 1.5rem); max-width: calc(33.333% - 1.5rem);">
+                <div class="card" style="display: flex; flex-direction: column; height: 100%;">
+                    <?php $localPath = "../cinev_api/banners/" . basename($row['path_gambar']); ?>
+                    <img src="<?= htmlspecialchars($localPath) ?>" class="card-img-top p-2" alt="Banner" style="height: 150px; object-fit: contain; border-radius: 8px;">
+                    <div class="card-body" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;"><?= htmlspecialchars($row['judul']) ?></h3>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">
+                                <strong>Posisi:</strong> <span class="badge <?= $row['posisi'] == 'home' ? 'badge-series' : 'badge-movie' ?>"><?= strtoupper($row['posisi']) ?></span>
+                            </p>
+                            <?php if($row['link_url']): ?>
+                                <a href="<?= htmlspecialchars($row['link_url']) ?>" target="_blank" style="font-size: 0.85rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 1rem; color: var(--primary-color);"><?= htmlspecialchars($row['link_url']) ?></a>
+                            <?php else: ?>
+                                <span style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 1rem;">Tidak ada link</span>
+                            <?php endif; ?>
+                        </div>
+                        <a href="hapus_banner.php?id=<?= $row['id'] ?>" class="btn btn-danger" style="width: 100%;" onclick="return confirm('Hapus banner ini?')">Hapus</a>
                     </div>
                 </div>
             </div>
             <?php endwhile; else: ?>
-            <div class="col-12"><p class="text-center text-muted">Belum ada banner iklan.</p></div>
+            <div class="col-12"><p style="color: var(--text-muted);">Belum ada banner iklan.</p></div>
             <?php endif; ?>
         </div>
     </div>
 
     <!-- Modal Tambah Banner -->
-    <div class="modal fade" id="modalTambahBanner" tabindex="-1">
-      <div class="modal-dialog">
+    <div id="modalTambahBanner" class="modal">
         <form action="tambah_banner.php" method="POST" enctype="multipart/form-data" class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Upload Banner Baru</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-                <label>Judul Banner</label>
-                <input type="text" name="judul" class="form-control" placeholder="Contoh: Iklan Kopi" required>
+            <div class="modal-header">
+                <h3 style="margin: 0; font-size: 1.25rem;">Upload Banner Baru</h3>
+                <button type="button" class="btn-close" onclick="closeModal('modalTambahBanner')">×</button>
             </div>
-            <div class="mb-3">
-                <label>Posisi Tampil</label>
-                <select name="posisi" class="form-select" required>
-                    <option value="home">Halaman Utama (Carousel Bergeser)</option>
-                    <option value="player">Halaman Pemutar Video (Bawah Video)</option>
-                </select>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Judul Banner</label>
+                    <input type="text" name="judul" class="form-control" placeholder="Contoh: Iklan Kopi" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Posisi Tampil</label>
+                    <select name="posisi" class="form-control" required>
+                        <option value="home">Halaman Utama (Carousel Bergeser)</option>
+                        <option value="player">Halaman Pemutar Video (Bawah Video)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pilih File Gambar (Disarankan orientasi lanskap)</label>
+                    <input type="file" name="file_banner" class="form-control" accept="image/*" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Tautan Iklan / Link (Opsional)</label>
+                    <input type="url" name="link_url" class="form-control" placeholder="https://contoh.com">
+                    <small style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-top: 0.5rem;">Website akan terbuka jika banner ditekan.</small>
+                </div>
             </div>
-            <div class="mb-3">
-                <label>Pilih File Gambar (Disarankan orientasi lanskap)</label>
-                <input type="file" name="file_banner" class="form-control" accept="image/*" required>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modalTambahBanner')">Batal</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
             </div>
-            <div class="mb-3">
-                <label>Tautan Iklan / Link (Opsional)</label>
-                <input type="url" name="link_url" class="form-control" placeholder="https://contoh.com">
-                <small class="text-muted">Website akan terbuka jika banner ditekan.</small>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary">Upload</button>
-          </div>
         </form>
-      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function openModal(id) {
+            document.getElementById(id).classList.add('show');
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('show');
+            }
+        }
+    </script>
 </body>
 </html>

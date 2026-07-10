@@ -42,15 +42,30 @@ class _HalamanDetailFilmState extends State<HalamanDetailFilm> {
     if (widget.serial.isLokal) {
       // Jika film lokal, gunakan data dari objek yang sudah ada (tidak perlu fetch API detail)
       _detailSerialTv = Future.value(widget.serial);
-      // Dummy 1 episode untuk film lokal (karena biasanya 1 full movie)
-      _daftarEpisodeFuture = Future.value([
-        Episode(
-          nama: 'Full Movie',
-          ringkasan: widget.serial.ringkasan,
-          nomorEpisode: 1,
-          pathGambar: widget.serial.pathLatar,
-        ),
-      ]);
+      
+      if (widget.serial.type == 'series') {
+        // Fetch episode lokal
+        _daftarEpisodeFuture = _apiService.ambilEpisodeLokal(widget.serial.id).then((episodes) {
+          return episodes.map((ep) => Episode(
+            nama: ep.title,
+            ringkasan: '', // Episode lokal belum ada sinopsis terpisah
+            nomorEpisode: ep.episodeNumber,
+            pathGambar: widget.serial.pathLatar, // Pake backdrop series
+            urlVideoLokal: ep.videoUrl,
+          )).toList();
+        });
+      } else {
+        // Dummy 1 episode untuk film lokal tipe movie
+        _daftarEpisodeFuture = Future.value([
+          Episode(
+            nama: 'Full Movie',
+            ringkasan: widget.serial.ringkasan,
+            nomorEpisode: 1,
+            pathGambar: widget.serial.pathLatar,
+            urlVideoLokal: widget.serial.urlVideoLokal,
+          ),
+        ]);
+      }
     } else {
       // Logika lama TMDB
       _detailSerialTv = _apiService.ambilDetailSerialTv(widget.serial.id);
@@ -231,16 +246,19 @@ class _HalamanDetailFilmState extends State<HalamanDetailFilm> {
 
   // --- FUNGSI _gantiSeason DIHAPUS ---
 
-  void _putarTrailer(int idSerial, String namaSerial, int nomorEpisode) async {
+  void _putarTrailer(int idSerial, String namaSerial, int nomorEpisode, {String? urlVideoLokal}) async {
     // --- LOGIKA BARU UNTUK FILM LOKAL ---
-    if (widget.serial.isLokal && widget.serial.urlVideoLokal != null) {
+    if (widget.serial.isLokal && urlVideoLokal != null) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => HalamanPemutarVideo(
-            pathVideo: widget.serial.urlVideoLokal!,
-            judul: widget.serial.nama,
+          builder: (context) => HalamanPlayer(
+            youtubeKey: '', // Kosongkan karena bukan dari youtube
+            namaSerial: widget.serial.nama,
+            nomorEpisode: nomorEpisode,
             idFilm: widget.serial.id,
+            isLokal: true,
+            urlVideoLokal: urlVideoLokal,
             progressSeconds: widget.serial.progressSeconds,
           ),
         ),
@@ -288,359 +306,284 @@ class _HalamanDetailFilmState extends State<HalamanDetailFilm> {
   }
 
   Widget _buildDetailContent(SerialTv detailSerial) {
-    return Stack(
-      children: [
-        // --- KONTEN YANG BISA DI-SCROLL ---
-        CustomScrollView(
-          slivers: [
-            // Spacer seukuran header kustom
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 380, // Sesuaikan tinggi header
-              ),
-            ),
-
-            // --- Bagian Konten di Bawah Gambar ---
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // --- BARIS JUDUL DAN TOMBOL FAVORIT ---
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Judul
-                        Expanded(
-                          child: Text(
-                            detailSerial.nama,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        // Tombol Favorit (PINDAH KE SINI)
-                        IconButton(
-                          onPressed: () {
-                            if (_apakahDiFavorite) {
-                              _hapusDariFavorite();
-                            } else {
-                              _tambahKeFavorite();
-                            }
-                          },
-                          icon: Icon(
-                            _apakahDiFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _apakahDiFavorite
-                                ? Colors.red
-                                : Colors.white,
-                            size: 32, // Ukuran disamakan dikit
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // --- AKHIR BARIS JUDUL ---
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_today,
-                          size: 16,
-                          color: Colors.white70,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          detailSerial.tanggalRilisPertama ?? 'N/A',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        const Icon(
-                          Icons.timer_outlined,
-                          size: 16,
-                          color: Colors.white70,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${detailSerial.durasiEpisode ?? 'N/A'} menit',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8.0,
-                      children:
-                          detailSerial.genre?.map((g) {
-                            return Chip(
-                              label: Text(g['name']),
-                              backgroundColor: Colors.grey[850],
-                            );
-                          }).toList() ??
-                          [],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // --- SINOPSIS ---
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          detailSerial.ringkasan,
-                          maxLines: _apakahSinopsisDiperluas ? null : 10,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _apakahSinopsisDiperluas =
-                                  !_apakahSinopsisDiperluas;
-                            });
-                          },
-                          child: Text(
-                            _apakahSinopsisDiperluas
-                                ? 'Lebih Sedikit'
-                                : 'Selengkapnya',
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // --- SECTION EPISODE (KODE BARU) ---
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Episode',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // --- Tombol Pilihan Season DIHAPUS ---
-
-                        // --- Daftar Episode (GRID 5 KOLOM) ---
-                        FutureBuilder<List<Episode>>(
-                          future: _daftarEpisodeFuture,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
-                            if (snapshot.hasError) {
-                              return Center(
-                                child: Text('Error: ${snapshot.error}'),
-                              );
-                            }
-                            if (snapshot.hasData) {
-                              final daftarEpisode = snapshot.data!;
-                              return GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 5, // Jumlah kolom
-                                      crossAxisSpacing: 10,
-                                      mainAxisSpacing: 10,
-                                      childAspectRatio: 1 / 1,
-                                    ),
-                                itemCount: daftarEpisode.length,
-                                itemBuilder: (context, index) {
-                                  final episode = daftarEpisode[index];
-                                  final int nomorEpisode = episode.nomorEpisode;
-
-                                  return ElevatedButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _episodeTerpilih = nomorEpisode;
-                                      });
-                                      _putarTrailer(
-                                        widget.serial.id,
-                                        widget.serial.nama,
-                                        nomorEpisode,
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          _episodeTerpilih == nomorEpisode
-                                          ? Colors.white
-                                          : Colors.grey[850],
-                                      foregroundColor:
-                                          _episodeTerpilih == nomorEpisode
-                                          ? Colors.black
-                                          : Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                    child: Text(
-                                      nomorEpisode.toString(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        _buildTombolAksi(
-                          ikon: _isLiked
-                              ? Icons.thumb_up_alt
-                              : Icons.thumb_up_alt_outlined,
-                          teks: _totalLikes.toString(),
-                          onPressed: _toggleLike,
-                        ),
-                        _buildTombolAksi(
-                          ikon: Icons.thumb_down_alt_outlined,
-                          teks: 'Dislike',
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const CircleAvatar(child: Icon(Icons.person)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _showReviewBottomSheet,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[850],
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: const Text(
-                                'Tambahkan komentar anda',
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildReviewsList(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        // --- HEADER KUSTOM (NUMPUK DI ATAS) ---
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: SizedBox(
-            height: 380, // Tinggi header
-            child: Stack(
-              fit: StackFit.expand,
+    return SingleChildScrollView(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Background hitam untuk semua konten
+          Container(
+            color: const Color(0xFF111111),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Gambar Background
-                Image.network(
-                  detailSerial.pathLatar ?? detailSerial.pathPoster,
-                  fit: BoxFit.cover,
-                ),
-                // Gradien Hitam
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black54, // Sedikit gelap di atas
-                        Colors.transparent,
-                        Color(0xFF1C1C27), // Hitam pekat di bawah
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: [0.0, 0.5, 1.0],
+                // Header Image
+                Stack(
+                  children: [
+                    Image.network(
+                      detailSerial.pathLatar ?? detailSerial.pathPoster,
+                      width: double.infinity,
+                      height: 280,
+                      fit: BoxFit.cover,
                     ),
-                  ),
-                ),
-                // Poster di Tengah Bawah
-                Positioned(
-                  bottom: 20,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        detailSerial.pathPoster,
-                        width: 140,
-                        height: 210,
-                        fit: BoxFit.cover,
+                    // Gradien transisi ke hitam
+                    Container(
+                      height: 280,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black54,
+                            Colors.transparent,
+                            Color(0xFF111111),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: [0.0, 0.5, 1.0],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                // Tombol Back dan Favorit
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 8,
-                  left: 16,
-                  right: 16,
-                  child: Row(
-                    // mainAxisAlignment: MainAxisAlignment.spaceBetween, <-- HAPUS INI
-                    children: [
-                      // Tombol Back
-                      Container(
+                    // Tombol Back
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 8,
+                      left: 16,
+                      child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withOpacity(0.3),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                            size: 28,
-                          ),
+                          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
-                      // <-- Tombol Favorit SUDAH DIHAPUS DARI SINI
-                    ],
+                    ),
+                  ],
+                ),
+
+                // Area Poster (Overlap dari atas)
+                const SizedBox(height: 140), // Ruang untuk poster overlap
+
+                // Judul
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      detailSerial.nama,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 12),
+
+                // Metadata (Tahun, Durasi)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.calendar_month, color: Colors.white70, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      detailSerial.tanggalRilisPertama?.split('-')[0] ?? 'N/A',
+                      style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 24),
+                    const Icon(Icons.access_time_filled, color: Colors.white70, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${detailSerial.durasiEpisode ?? '-'} min',
+                      style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Genres (Grid Wrap)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Center(
+                    child: Wrap(
+                      spacing: 12.0,
+                      runSpacing: 12.0,
+                      alignment: WrapAlignment.center,
+                      children: detailSerial.genre?.map((g) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white54, width: 1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            g['name'],
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      }).toList() ?? [],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Sinopsis
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    detailSerial.ringkasan,
+                    maxLines: _apakahSinopsisDiperluas ? null : 4,
+                    overflow: _apakahSinopsisDiperluas ? null : TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      height: 1.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Tombol Selengkapnya
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _apakahSinopsisDiperluas = !_apakahSinopsisDiperluas;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white54, width: 1),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Text(
+                        _apakahSinopsisDiperluas ? 'Lebih Sedikit' : 'Selengkapnya',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Section Episode
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Episode',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Episode List (Future Builder)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: FutureBuilder<List<Episode>>(
+                    future: _daftarEpisodeFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+                      }
+                      if (snapshot.hasData) {
+                        final daftarEpisode = snapshot.data!;
+                        return Wrap(
+                          spacing: 12.0,
+                          runSpacing: 12.0,
+                          children: daftarEpisode.map((episode) {
+                            final int nomorEpisode = episode.nomorEpisode;
+                            final isSelected = _episodeTerpilih == nomorEpisode;
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _episodeTerpilih = nomorEpisode;
+                                });
+                                _putarTrailer(
+                                  widget.serial.id,
+                                  widget.serial.nama,
+                                  nomorEpisode,
+                                  urlVideoLokal: episode.urlVideoLokal,
+                                );
+                              },
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? Colors.white : Colors.transparent,
+                                  border: Border.all(color: isSelected ? Colors.white : Colors.white54),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  nomorEpisode.toString(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: isSelected ? Colors.black : Colors.white,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+                const SizedBox(height: 40),
               ],
             ),
           ),
-        ),
-      ],
+          
+          // Poster Absolut Overlap
+          Positioned(
+            top: 130, // Letaknya berada menumpuk background dan header
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  detailSerial.pathPoster,
+                  width: 200,
+                  height: 280,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+
+          // Icon Heart Absolut Overlap
+          Positioned(
+            top: 240, // Letaknya berada di dekat background line (280) 
+            right: 24,
+            child: IconButton(
+              onPressed: () {
+                if (_apakahDiFavorite) {
+                  _hapusDariFavorite();
+                } else {
+                  _tambahKeFavorite();
+                }
+              },
+              icon: Icon(
+                _apakahDiFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _apakahDiFavorite ? Colors.red : Colors.white,
+                size: 36,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

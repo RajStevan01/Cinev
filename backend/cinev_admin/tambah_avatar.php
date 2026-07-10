@@ -6,9 +6,10 @@ if (!isset($_SESSION['admin'])) {
 }
 require 'koneksi.php';
 
-// Menentukan URL dasar agar path_gambar menggunakan IP yang benar (untuk Flutter)
-$ip_server = '10.222.15.55'; // Sesuai dengan konfigurasi flutter
-$base_url = "http://$ip_server/cinev_api/avatars/";
+// Menentukan URL dasar agar path_gambar menggunakan IP/domain yang benar
+$host = "musky-credit-guru.ngrok-free.dev";
+$protocol = "https";
+$base_url = "$protocol://$host/cinev_api/avatars/";
 
 // Direktori fisik penyimpanan di htdocs
 $target_dir = "../cinev_api/avatars/";

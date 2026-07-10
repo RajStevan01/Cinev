@@ -12,7 +12,7 @@ class DatabaseHelper {
   // PENTING: Atur Base URL sesuai dengan perangkamu!
   // - Jika pakai Emulator Android: 'http://10.0.2.2/cinev_api'
   // - Jika pakai HP Fisik/Real Device: IP Address WiFi laptopmu (contoh: 'http://192.168.1.15/cinev_api')
-  static const String baseUrl = 'http://10.222.15.55/cinev_api';
+  static const String baseUrl = 'https://musky-credit-guru.ngrok-free.dev/cinev_api';
 
   // ==========================================================
   // --- FUNGSI CRUD UNTUK WATCHLIST (MYSQL VIA API) ---

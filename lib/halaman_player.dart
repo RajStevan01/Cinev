@@ -5,17 +5,22 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:aplikasi_mobile/services/download_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async'; // Tambahan untuk memantau proses di belakang layar
-import 'package:aplikasi_mobile/services/notification_service.dart'; // Tambahan untuk memanggil notif
-import 'package:aplikasi_mobile/services/database_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:aplikasi_mobile/models/review.dart';
+import 'package:aplikasi_mobile/services/notification_service.dart'; // Dikembalikan
+import 'package:aplikasi_mobile/services/database_helper.dart'; // Dikembalikan
+import 'package:aplikasi_mobile/halaman_pemutar_video.dart';
+import 'package:video_player/video_player.dart';
 
 class HalamanPlayer extends StatefulWidget {
   final String youtubeKey;
   final String namaSerial;
   final int nomorEpisode;
   final int idFilm;
+  final bool isLokal;
+  final String? urlVideoLokal;
+  final int? progressSeconds;
 
   const HalamanPlayer({
     super.key,
@@ -23,6 +28,9 @@ class HalamanPlayer extends StatefulWidget {
     required this.namaSerial,
     required this.nomorEpisode,
     required this.idFilm,
+    this.isLokal = false,
+    this.urlVideoLokal,
+    this.progressSeconds,
   });
 
   @override
@@ -30,7 +38,8 @@ class HalamanPlayer extends StatefulWidget {
 }
 
 class _HalamanPlayerState extends State<HalamanPlayer> {
-  late final WebViewController _controller;
+  WebViewController? _webController;
+  VideoPlayerController? _videoController;
   bool _isPlayerReady = false;
 
   final DownloadService _downloadService = DownloadService();
@@ -52,7 +61,12 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
   void initState() {
     super.initState();
     _taskId = '${widget.namaSerial}_ep${widget.nomorEpisode}';
-    _loadSettingsAndInitWebView();
+    
+    if (widget.isLokal && widget.urlVideoLokal != null) {
+      _initLocalPlayer();
+    } else {
+      _loadSettingsAndInitWebView();
+    }
 
     // --- TAMBAHAN BARU: Pasang CCTV untuk memantau stream download ---
     _downloadSubscription = _downloadService.progressStream.listen((tasks) {
@@ -148,6 +162,7 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
   void dispose() {
     // CCTV wajib dimatikan saat pindah halaman agar memori HP tidak bocor (Memory Leak)
     _downloadSubscription?.cancel();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -162,7 +177,7 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
 
     final videoUrl = 'https://www.youtube.com/embed/${widget.youtubeKey}?autoplay=1&fs=1';
     
-    _controller = WebViewController()
+    _webController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
       ..loadRequest(Uri.parse(videoUrl))
@@ -179,6 +194,23 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
       );
   }
 
+  Future<void> _initLocalPlayer() async {
+    // Karena video kita diakses melalui URL lokal backend (contoh: http://192.168.x.x/cinev_api/uploads/video.mp4),
+    // kita selalu menggunakan networkUrl.
+    _videoController = VideoPlayerController.networkUrl(Uri.parse(widget.urlVideoLokal!));
+
+    await _videoController!.initialize();
+    if (mounted) {
+      setState(() {
+        _isPlayerReady = true;
+      });
+      if (widget.progressSeconds != null && widget.progressSeconds! > 0) {
+        _videoController!.seekTo(Duration(seconds: widget.progressSeconds!));
+      }
+      _videoController!.play();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -190,7 +222,57 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
             AspectRatio(
               aspectRatio: 16 / 9,
               child: _isPlayerReady
-                  ? WebViewWidget(controller: _controller)
+                  ? (widget.isLokal && _videoController != null
+                      ? Stack(
+                          alignment: Alignment.bottomCenter,
+                          children: [
+                            VideoPlayer(_videoController!),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _videoController!.value.isPlaying ? _videoController!.pause() : _videoController!.play();
+                                });
+                              },
+                              child: Center(
+                                child: Icon(
+                                  _videoController!.value.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                                  size: 60.0,
+                                  color: Colors.white.withOpacity(0.7),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0, left: 0, right: 0,
+                              child: VideoProgressIndicator(_videoController!, allowScrubbing: true, padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10)),
+                            ),
+                            Positioned(
+                              bottom: 15,
+                              right: 10,
+                              child: IconButton(
+                                icon: const Icon(Icons.fullscreen, color: Colors.white, size: 28),
+                                onPressed: () async {
+                                  // Pause video lokal yang kecil
+                                  _videoController!.pause();
+                                  // Navigasi ke halaman fullscreen
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => HalamanPemutarVideo(
+                                        pathVideo: widget.urlVideoLokal!,
+                                        judul: widget.namaSerial,
+                                        idFilm: widget.idFilm,
+                                        progressSeconds: _videoController!.value.position.inSeconds,
+                                      ),
+                                    ),
+                                  );
+                                  // Ketika kembali dari fullscreen, jangan lanjutkan memutar secara otomatis.
+                                  // Tapi jika ingin dilanjutkan, atau setel ke posisi baru (progress di sync jika halaman lain menyimpannya di DB, atau biarkan pengguna nge-play manual)
+                                },
+                              ),
+                            ),
+                          ],
+                        )
+                      : WebViewWidget(controller: _webController!))
                   : const Center(child: CircularProgressIndicator()),
             ),
             Padding(
@@ -211,14 +293,50 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _buildTombolAksi(
-                          ikon: _isLiked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
-                          teks: _totalLikes.toString(),
-                          onPressed: _toggleLike,
-                        ),
-                        _buildTombolAksi(
-                          ikon: Icons.thumb_down_alt_outlined,
-                          teks: 'Dislike',
+                        // Tombol Like & Dislike menyatu
+                        Container(
+                          margin: const EdgeInsets.only(right: 8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[850],
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: _toggleLike,
+                                borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Icon(_isLiked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined, size: 18, color: Colors.white),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _totalLikes >= 1000 ? '${(_totalLikes / 1000).toStringAsFixed(1)}k' : _totalLikes.toString(),
+                                        style: const TextStyle(color: Colors.white),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Container(width: 1, height: 20, color: Colors.white30), // Garis pemisah
+                              InkWell(
+                                onTap: () {}, // Logika dislike belum ada
+                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(24)),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.thumb_down_alt_outlined, size: 18, color: Colors.white),
+                                      SizedBox(width: 6),
+                                      Text('3k', style: TextStyle(color: Colors.white)), // Tampilan statis sesuai Figma
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         _buildTombolAksi(
                           ikon: Icons.play_circle_fill_outlined,
@@ -321,13 +439,23 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
+                  Container(
+                    width: 50,
+                    height: 50,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border.all(color: Colors.white54),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(widget.nomorEpisode.toString()),
+                    child: Text(
+                      widget.nomorEpisode.toString(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   FutureBuilder<List<BannerModel>>(
@@ -365,7 +493,14 @@ class _HalamanPlayerState extends State<HalamanPlayer> {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      const CircleAvatar(child: Icon(Icons.person)),
+                      CircleAvatar(
+                        backgroundImage: FirebaseAuth.instance.currentUser?.photoURL != null
+                            ? NetworkImage(FirebaseAuth.instance.currentUser!.photoURL!)
+                            : null,
+                        child: FirebaseAuth.instance.currentUser?.photoURL == null
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: GestureDetector(

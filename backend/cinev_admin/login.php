@@ -37,29 +37,27 @@ if (isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Admin - Cinev</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .login-card { width: 100%; max-width: 400px; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); background: white; }
-    </style>
+    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
-    <div class="login-card">
-        <h3 class="text-center mb-4">Admin Cinev</h3>
-        <?php if($error): ?>
-            <div class="alert alert-danger"><?= $error ?></div>
-        <?php endif; ?>
-        <form method="POST">
-            <div class="mb-3">
-                <label>Username</label>
-                <input type="text" name="username" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>Password</label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            <button type="submit" name="login" class="btn btn-primary w-100">Login</button>
-        </form>
+    <div class="login-wrapper">
+        <div class="glass-panel login-card">
+            <div class="login-logo">Cinev Admin</div>
+            <?php if($error): ?>
+                <div class="alert alert-danger"><?= $error ?></div>
+            <?php endif; ?>
+            <form method="POST">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" name="login" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
+            </form>
+        </div>
     </div>
 </body>
 </html>

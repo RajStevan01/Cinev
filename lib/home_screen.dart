@@ -11,6 +11,7 @@ import 'package:aplikasi_mobile/halaman_lihat_semua.dart';
 import 'package:aplikasi_mobile/halaman_notifikasi.dart'; // Import halaman notifikasi
 import 'package:aplikasi_mobile/services/database_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:aplikasi_mobile/halaman_player.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -300,6 +301,79 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _langsungPutarLanjutan(SerialTv serial) async {
+    // Tampilkan loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    int nomorEpisode = 1; // Default
+    String? urlVideoLokal;
+
+    try {
+      if (serial.isLokal) {
+        // Coba ambil episode 1 untuk film lokal
+        final episodes = await _apiService.ambilEpisodeLokal(serial.id);
+        if (episodes.isNotEmpty) {
+          final ep1 = episodes.first;
+          nomorEpisode = ep1.episodeNumber;
+          urlVideoLokal = ep1.videoUrl;
+        }
+
+        if (urlVideoLokal != null) {
+          Navigator.of(context).pop(); // Tutup dialog loading
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HalamanPlayer(
+                youtubeKey: '', // Kosongkan karena bukan dari youtube
+                namaSerial: serial.nama,
+                nomorEpisode: nomorEpisode,
+                idFilm: serial.id,
+                isLokal: true,
+                urlVideoLokal: urlVideoLokal,
+                progressSeconds: serial.progressSeconds,
+              ),
+            ),
+          );
+          return; // Berhenti di sini
+        }
+      }
+
+      // --- LOGIKA TMDB (YOUTUBE) ---
+      final youtubeKey = await _apiService.ambilLinkTrailer(serial.id);
+      Navigator.of(context).pop(); // Tutup dialog loading
+
+      if (youtubeKey != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HalamanPlayer(
+              youtubeKey: youtubeKey,
+              namaSerial: serial.nama,
+              nomorEpisode: nomorEpisode,
+              idFilm: serial.id,
+              progressSeconds: serial.progressSeconds,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Trailer untuk serial ini tidak ditemukan.'),
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Tutup dialog loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat film: $e')),
+      );
+    }
+  }
+
   // SEMUA FUNGSI HELPER (_buildMoviesSection, dll) TIDAK BERUBAH
   Widget _buildMoviesSection({
     required String title,
@@ -375,12 +449,16 @@ class _HomeScreenState extends State<HomeScreen> {
           final serial = daftarSerial[index];
           return InkWell(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => HalamanDetailFilm(serial: serial),
-                ),
-              );
+              if (isRiwayat) {
+                _langsungPutarLanjutan(serial);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HalamanDetailFilm(serial: serial),
+                  ),
+                );
+              }
             },
             child: Padding(
               padding: const EdgeInsets.only(right: 12.0),

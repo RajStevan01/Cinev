@@ -15,6 +15,7 @@ class SerialTv {
   final String? urlVideoLokal; // URL video mp4 lokal
   final int? progressSeconds; // Tambahan untuk history
   final int? totalSeconds; // Tambahan untuk history
+  final String? type; // Tambahan tipe konten 'movie' atau 'series'
 
   SerialTv({
     required this.id,
@@ -31,6 +32,7 @@ class SerialTv {
     this.urlVideoLokal,
     this.progressSeconds,
     this.totalSeconds,
+    this.type = 'movie', // Default 'movie'
   });
 
   // Factory method untuk membuat instance dari JSON list (dari Top Rated/Popular)
@@ -58,6 +60,7 @@ class SerialTv {
       urlVideoLokal: json['video_url'],
       progressSeconds: json['progress_seconds'] != null ? int.tryParse(json['progress_seconds'].toString()) : null,
       totalSeconds: json['total_seconds'] != null ? int.tryParse(json['total_seconds'].toString()) : null,
+      type: json['type'] ?? 'movie',
     );
   }
 

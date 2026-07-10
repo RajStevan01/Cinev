@@ -98,6 +98,8 @@ if (isset($_POST['simpan'])) {
     $release_date = $_POST['release_date'];
     $vote_average = $_POST['vote_average'];
 
+    $type = $conn->real_escape_string($_POST['type']); // movie atau series
+    
     // Inisialisasi variabel untuk path
     $poster_path = '';
     $backdrop_path = ''; // Sama dengan poster untuk simpelnya
@@ -105,8 +107,9 @@ if (isset($_POST['simpan'])) {
     
     $upload_dir = 'uploads/';
     // Gunakan IP dinamis dari server saat ini, jadi tidak perlu ganti manual kalau IP berubah
-    $host = $_SERVER['HTTP_HOST'];
-    $base_url = "http://$host/cinev_admin/uploads/";
+    $host = "musky-credit-guru.ngrok-free.dev";
+    $protocol = "https";
+    $base_url = "$protocol://$host/cinev_admin/uploads/";
 
     // Proses Upload Poster
     if (isset($_FILES['poster']) && $_FILES['poster']['error'] == 0) {
@@ -117,7 +120,7 @@ if (isset($_POST['simpan'])) {
         }
     }
 
-    // Proses Upload Video
+    // Proses Upload Video (hanya jika ada file video diupload)
     if (isset($_FILES['video']) && $_FILES['video']['error'] == 0) {
         $video_name = time() . '_video_' . $_FILES['video']['name'];
         if (move_uploaded_file($_FILES['video']['tmp_name'], $upload_dir . $video_name)) {
@@ -125,9 +128,15 @@ if (isset($_POST['simpan'])) {
         }
     }
 
-    if ($poster_path != '' && $video_url != '') {
-        $sql = "INSERT INTO tb_local_movies (title, overview, poster_path, backdrop_path, video_url, release_date, vote_average) 
-                VALUES ('$title', '$overview', '$poster_path', '$backdrop_path', '$video_url', '$release_date', '$vote_average')";
+    // Validasi: jika tipe 'movie' maka harus ada video
+    $videoValid = true;
+    if ($type == 'movie' && $video_url == '') {
+        $videoValid = false;
+    }
+
+    if ($poster_path != '' && $videoValid) {
+        $sql = "INSERT INTO tb_local_movies (title, overview, poster_path, backdrop_path, video_url, release_date, vote_average, type) 
+                VALUES ('$title', '$overview', '$poster_path', '$backdrop_path', '$video_url', '$release_date', '$vote_average', '$type')";
         
         if ($conn->query($sql) === TRUE) {
             // INSERT ke tb_notifications (Lonceng Notifikasi)
@@ -159,52 +168,87 @@ if (isset($_POST['simpan'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Film Lokal</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">Cinev Admin</a>
+    <nav class="navbar">
+        <a class="navbar-brand" href="index.php">Cinev Admin</a>
+        <ul class="navbar-nav">
+            <li><a class="nav-link" href="index.php">Film Lokal</a></li>
+            <li><a class="nav-link" href="avatars.php">Manajemen Avatar</a></li>
+            <li><a class="nav-link" href="banners.php">Manajemen Banner</a></li>
+            <li><a class="nav-link" href="users.php">Manajemen User</a></li>
+        </ul>
+        <div class="nav-user">
+            <span>Halo, <?= $_SESSION['admin'] ?></span>
+            <a href="logout.php" class="btn btn-outline btn-sm">Logout</a>
         </div>
     </nav>
 
     <div class="container">
-        <h3>Tambah Film Baru</h3>
-        <a href="index.php" class="btn btn-secondary mb-3">Kembali</a>
+        <div class="header-actions">
+            <h2>Tambah Film Baru</h2>
+            <a href="index.php" class="btn btn-outline">Kembali</a>
+        </div>
         
         <?php if($msg): ?>
             <div class="alert alert-danger"><?= $msg ?></div>
         <?php endif; ?>
 
-        <form method="POST" enctype="multipart/form-data" class="bg-light p-4 border rounded">
-            <div class="mb-3">
-                <label class="form-label">Judul Film</label>
+        <form method="POST" enctype="multipart/form-data" class="glass-panel" id="uploadForm" style="max-width: 800px; margin: 0 auto;">
+            <div class="form-group">
+                <label class="form-label">Tipe Konten</label>
+                <select name="type" id="typeSelect" class="form-control" required>
+                    <option value="movie" selected>Movie (1 File Video)</option>
+                    <option value="series">Series (Banyak Episode)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Judul Film / Serial</label>
                 <input type="text" name="title" class="form-control" required>
             </div>
-            <div class="mb-3">
+            <div class="form-group">
                 <label class="form-label">Sinopsis (Overview)</label>
                 <textarea name="overview" class="form-control" rows="4" required></textarea>
             </div>
-            <div class="row">
-                <div class="col-md-6 mb-3">
+            <div style="display: flex; gap: 1.5rem;">
+                <div class="form-group" style="flex: 1;">
                     <label class="form-label">Tanggal Rilis</label>
                     <input type="date" name="release_date" class="form-control" required>
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="form-group" style="flex: 1;">
                     <label class="form-label">Rating (1.0 - 10.0)</label>
                     <input type="number" step="0.1" name="vote_average" class="form-control" value="8.0" required>
                 </div>
             </div>
-            <div class="mb-3">
+            <div class="form-group">
                 <label class="form-label">Upload Poster (Image)</label>
                 <input type="file" name="poster" accept="image/*" class="form-control" required>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Upload Video Film (.mp4)</label>
-                <input type="file" name="video" accept="video/mp4" class="form-control" required>
+            <div class="form-group" id="videoUploadDiv">
+                <label class="form-label">Upload Video (MP4)</label>
+                <input type="file" name="video" id="videoInput" accept="video/mp4" class="form-control" required>
+                <small style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-top: 0.5rem;">Max size: Biasanya diatur oleh konfigurasi `upload_max_filesize` di php.ini.</small>
             </div>
-            <button type="submit" name="simpan" class="btn btn-success w-100 mt-3">Simpan & Upload Film</button>
+            
+            <button type="submit" name="simpan" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Simpan Film</button>
         </form>
     </div>
+
+    <script>
+        const typeSelect = document.getElementById('typeSelect');
+        const videoUploadDiv = document.getElementById('videoUploadDiv');
+        const videoInput = document.getElementById('videoInput');
+
+        typeSelect.addEventListener('change', function() {
+            if (this.value === 'series') {
+                videoUploadDiv.style.display = 'none';
+                videoInput.removeAttribute('required');
+            } else {
+                videoUploadDiv.style.display = 'block';
+                videoInput.setAttribute('required', 'required');
+            }
+        });
+    </script>
 </body>
 </html>

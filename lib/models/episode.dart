@@ -5,12 +5,14 @@ class Episode {
   final String ringkasan;
   final int nomorEpisode;
   final String? pathGambar; // Still image path
+  final String? urlVideoLokal; // URL video mp4 lokal
 
   Episode({
     required this.nama,
     required this.ringkasan,
     required this.nomorEpisode,
     this.pathGambar,
+    this.urlVideoLokal,
   });
 
   factory Episode.dariJson(Map<String, dynamic> json) {

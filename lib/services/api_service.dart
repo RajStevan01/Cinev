@@ -5,6 +5,7 @@ import 'package:aplikasi_mobile/models/serial_tv.dart';
 import 'package:http/http.dart' as http;
 import 'package:aplikasi_mobile/models/episode.dart';
 import 'package:aplikasi_mobile/services/database_helper.dart';
+import 'package:aplikasi_mobile/models/episode_lokal.dart';
 
 class ApiService {
   static const String _apiKey =
@@ -213,6 +214,25 @@ class ApiService {
       }
     } catch (e) {
       print('Error ambilSerialTvLokal: $e');
+      return [];
+    }
+  }
+
+  // FUNGSI BARU 4: Mengambil episode lokal untuk sebuah series
+  Future<List<EpisodeLokal>> ambilEpisodeLokal(int movieId) async {
+    final url = Uri.parse('${DatabaseHelper.baseUrl}/get_episodes.php?movie_id=$movieId');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success') {
+          List<dynamic> results = data['episodes'];
+          return results.map((json) => EpisodeLokal.fromJson(json)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error ambilEpisodeLokal: $e');
       return [];
     }
   }

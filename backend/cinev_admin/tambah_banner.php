@@ -6,8 +6,9 @@ if (!isset($_SESSION['admin'])) {
 }
 require 'koneksi.php';
 
-$ip_server = '10.222.15.55';
-$base_url = "http://$ip_server/cinev_api/banners/";
+$host = "musky-credit-guru.ngrok-free.dev";
+$protocol = "https";
+$base_url = "$protocol://$host/cinev_api/banners/";
 $target_dir = "../cinev_api/banners/";
 
 if (!file_exists($target_dir)) {

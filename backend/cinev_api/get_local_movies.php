@@ -5,7 +5,7 @@ header("Content-Type: application/json; charset=UTF-8");
 
 require 'koneksi.php';
 
-$sql = "SELECT id, title, overview, poster_path, backdrop_path, video_url, release_date, vote_average, created_at 
+$sql = "SELECT id, title, overview, poster_path, backdrop_path, video_url, release_date, vote_average, type, created_at 
         FROM tb_local_movies 
         ORDER BY created_at DESC";
 
@@ -32,6 +32,7 @@ if ($result->num_rows > 0) {
             "video_url" => $video_url,
             "release_date" => isset($row["release_date"]) ? $row["release_date"] : date("Y-m-d"),
             "vote_average" => isset($row["vote_average"]) ? (double)$row["vote_average"] : 0.0,
+            "type" => isset($row["type"]) ? $row["type"] : "movie",
             "is_local" => true 
         );
         array_push($movies, $movie);

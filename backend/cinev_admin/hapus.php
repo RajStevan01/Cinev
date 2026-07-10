@@ -18,10 +18,21 @@ if (isset($_GET['id'])) {
         $poster_filename = basename($row['poster_path']);
         $video_filename = basename($row['video_url']);
         
-        if (file_exists("uploads/" . $poster_filename)) unlink("uploads/" . $poster_filename);
-        if (file_exists("uploads/" . $video_filename)) unlink("uploads/" . $video_filename);
+        if (file_exists("uploads/" . $poster_filename) && $poster_filename != "") unlink("uploads/" . $poster_filename);
+        if (file_exists("uploads/" . $video_filename) && $video_filename != "") unlink("uploads/" . $video_filename);
         
-        // Hapus dari database
+        // Hapus file fisik dari episode-episode serial ini
+        $episodes = $conn->query("SELECT video_url FROM tb_local_episodes WHERE movie_id = $id");
+        if ($episodes->num_rows > 0) {
+            while ($ep = $episodes->fetch_assoc()) {
+                $ep_video = basename($ep['video_url']);
+                if (file_exists("uploads/" . $ep_video) && $ep_video != "") {
+                    unlink("uploads/" . $ep_video);
+                }
+            }
+        }
+
+        // Hapus dari database (tb_local_episodes otomatis terhapus karena ON DELETE CASCADE)
         $conn->query("DELETE FROM tb_local_movies WHERE id = $id");
     }
 }
